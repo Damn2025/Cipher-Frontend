@@ -2,13 +2,13 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useEffect, useState } from 'react';
 import { X, Lock, Mail, Eye, EyeOff, Shield, User, Phone } from 'lucide-react';
 import { supabase } from "@/react-app/lib/supabase";
-import { saveTrialScan } from "@/react-app/utils/saveTrialScan";
+import { saveTrialScan, type SavedTrialScan } from "@/react-app/utils/saveTrialScan";
 
 type SignupModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onSwitchToLogin: () => void;
-  onAuthenticated: () => void;
+  onAuthenticated: (savedScan?: SavedTrialScan) => void;
 };
 
 const SignupModal = ({ isOpen, onClose, onSwitchToLogin, onAuthenticated }: SignupModalProps) => {
@@ -132,11 +132,11 @@ const SignupModal = ({ isOpen, onClose, onSwitchToLogin, onAuthenticated }: Sign
       }
 
       // Save trial scan if exists (after successful signup with session)
+      let savedScan: SavedTrialScan | undefined;
       try {
-        await saveTrialScan();
+        savedScan = await saveTrialScan() ?? undefined;
       } catch (err) {
         console.error('Failed to save trial scan after signup:', err);
-        // Don't block signup if saving trial scan fails
       }
 
       setFormData({
@@ -147,7 +147,7 @@ const SignupModal = ({ isOpen, onClose, onSwitchToLogin, onAuthenticated }: Sign
         confirmPassword: ''
       });
       onClose();
-      onAuthenticated();
+      onAuthenticated(savedScan);
     } finally {
       setLoading(false);
     }

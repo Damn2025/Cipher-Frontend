@@ -5,3 +5,4 @@ node_modules/
 worker-configuration.d.ts
 .env
 .env.local
+CUSTOME_DOMAIN.md

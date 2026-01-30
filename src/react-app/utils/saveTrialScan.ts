@@ -1,29 +1,27 @@
 import { getApiUrl, getAuthHeaders } from '@/react-app/lib/api';
 
-export async function saveTrialScan(): Promise<boolean> {
+export type SavedTrialScan = { scanId: string; scanType: 'web' | 'mobile' };
+
+export async function saveTrialScan(): Promise<SavedTrialScan | null> {
   try {
-    // Check for pending trial scan in localStorage
     const pendingTrialScan = localStorage.getItem('pendingTrialScan');
     if (!pendingTrialScan) {
-      return false;
+      return null;
     }
 
     const trialScanData = JSON.parse(pendingTrialScan);
+    const scanType = trialScanData.scanType as 'web' | 'mobile';
 
-    // Get auth headers (includes Authorization if session exists)
     const headers = await getAuthHeaders('application/json');
-    const headersObj: Record<string, string> = typeof headers === 'object' && !Array.isArray(headers) && !(headers instanceof Headers) 
-      ? headers as Record<string, string>
+    const headersObj: Record<string, string> = typeof headers === 'object' && !Array.isArray(headers) && !(headers instanceof Headers)
+      ? (headers as Record<string, string>)
       : {};
 
-    // If Authorization is required and missing, we bail out
-    // (original behaviour required session.access_token)
-    if (!headersObj.Authorization) return false;
+    if (!headersObj.Authorization) return null;
 
     let response: Response;
 
-    if (trialScanData.scanType === 'web') {
-      // Save web trial scan
+    if (scanType === 'web') {
       response = await fetch(getApiUrl('/api/scans/save-trial'), {
         method: 'POST',
         headers,
@@ -32,8 +30,7 @@ export async function saveTrialScan(): Promise<boolean> {
           vulnerabilities: trialScanData.vulnerabilities,
         }),
       });
-    } else if (trialScanData.scanType === 'mobile') {
-      // Save mobile trial scan
+    } else if (scanType === 'mobile') {
       response = await fetch(getApiUrl('/api/mobile-scans/save-trial'), {
         method: 'POST',
         headers,
@@ -43,17 +40,21 @@ export async function saveTrialScan(): Promise<boolean> {
         }),
       });
     } else {
-      return false;
+      return null;
     }
 
     if (response.ok) {
+      const data = await response.json();
+      const scanId = data?.scan?.id;
       localStorage.removeItem('pendingTrialScan');
-      return true;
+      if (scanId) {
+        return { scanId, scanType };
+      }
     }
 
-    return false;
+    return null;
   } catch (err) {
     console.error('Failed to save trial scan:', err);
-    return false;
+    return null;
   }
 }

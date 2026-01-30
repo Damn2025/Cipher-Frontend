@@ -1,5 +1,7 @@
-import { X, Lock, AlertTriangle, Shield, CheckCircle, Globe, Smartphone } from 'lucide-react';
+import { useState } from 'react';
+import { X, Lock, AlertTriangle, Shield, CheckCircle, Globe, Smartphone, Save } from 'lucide-react';
 import SeverityBadge from '@/react-app/components/SeverityBadge';
+import { saveTrialScan } from '@/react-app/utils/saveTrialScan';
 
 interface TrialScanResultsProps {
   scanType: 'web' | 'mobile';
@@ -8,6 +10,8 @@ interface TrialScanResultsProps {
   onClose: () => void;
   onOpenLogin: () => void;
   onOpenSignup: () => void;
+  isAuthenticated?: boolean;
+  onSaveSuccess?: (scanId: string, scanType: 'web' | 'mobile') => void;
 }
 
 export default function TrialScanResults({
@@ -17,7 +21,12 @@ export default function TrialScanResults({
   onClose,
   onOpenLogin,
   onOpenSignup,
+  isAuthenticated = false,
+  onSaveSuccess,
 }: TrialScanResultsProps) {
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const severityCounts = {
     critical: scan.severity_critical || 0,
     high: scan.severity_high || 0,
@@ -74,48 +83,144 @@ export default function TrialScanResults({
           </div>
         </div>
 
-        {/* Blurred Results Section */}
+        {/* Results Section */}
         <div className="p-6 relative">
-          {/* Blur Overlay */}
-          <div className="absolute inset-0 bg-gray-950/95 backdrop-blur-md z-20 flex items-center justify-center rounded-b-2xl">
-            <div className="text-center p-8 max-w-md">
-              <div className="p-4 rounded-full bg-red-500/10 border border-red-500/20 inline-block mb-4">
-                <Lock className="w-8 h-8 text-red-400" />
+          {!isAuthenticated && (
+            <>
+              {/* Blur Overlay for unauthenticated users */}
+              <div className="absolute inset-0 bg-gray-950/95 backdrop-blur-md z-20 flex items-center justify-center rounded-b-2xl">
+                <div className="text-center p-8 max-w-md">
+                  <div className="p-4 rounded-full bg-red-500/10 border border-red-500/20 inline-block mb-4">
+                    <Lock className="w-8 h-8 text-red-400" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Sign Up to View Full Results</h3>
+                  <p className="text-gray-400 mb-6">
+                    Your trial scan has completed! Sign up or log in to view detailed vulnerability information,
+                    recommendations, and save your scan results.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button
+                      onClick={() => {
+                        onClose();
+                        onOpenSignup();
+                      }}
+                      className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white font-medium rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg shadow-red-500/20"
+                    >
+                      Sign Up Free
+                    </button>
+                    <button
+                      onClick={() => {
+                        onClose();
+                        onOpenLogin();
+                      }}
+                      className="px-6 py-3 border border-gray-700 text-gray-300 font-medium rounded-lg hover:bg-gray-800 transition-all"
+                    >
+                      Log In
+                    </button>
+                  </div>
+                </div>
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2">Sign Up to View Full Results</h3>
-              <p className="text-gray-400 mb-6">
-                Your trial scan has completed! Sign up or log in to view detailed vulnerability information, 
-                recommendations, and save your scan results.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button
-                  onClick={() => {
-                    onClose();
-                    onOpenSignup();
-                  }}
-                  className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white font-medium rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg shadow-red-500/20"
-                >
-                  Sign Up Free
-                </button>
-                <button
-                  onClick={() => {
-                    onClose();
-                    onOpenLogin();
-                  }}
-                  className="px-6 py-3 border border-gray-700 text-gray-300 font-medium rounded-lg hover:bg-gray-800 transition-all"
-                >
-                  Log In
-                </button>
-              </div>
-            </div>
-          </div>
 
-          {/* Blurred Content Preview */}
-          <div className="blur-sm pointer-events-none opacity-50">
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Vulnerabilities Found</h3>
+              {/* Blurred Content Preview */}
+              <div className="blur-sm pointer-events-none opacity-50">
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Vulnerabilities Found</h3>
+                  <div className="space-y-4">
+                    {vulnerabilities.slice(0, 3).map((vuln, idx) => (
+                      <div
+                        key={idx}
+                        className="p-4 rounded-lg border border-gray-800 bg-gray-900/50"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <AlertTriangle className={`w-5 h-5 ${
+                              vuln.severity === 'critical' ? 'text-red-400' :
+                              vuln.severity === 'high' ? 'text-orange-400' :
+                              vuln.severity === 'medium' ? 'text-yellow-400' :
+                              'text-blue-400'
+                            }`} />
+                            <h4 className="font-semibold text-white">{vuln.title}</h4>
+                          </div>
+                          <SeverityBadge severity={vuln.severity} />
+                        </div>
+                        <p className="text-sm text-gray-400 mb-2 line-clamp-2">
+                          {vuln.description}
+                        </p>
+                        {vuln.cvss_score && (
+                          <div className="text-xs text-gray-500">
+                            CVSS Score: {vuln.cvss_score}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {vulnerabilities.length > 3 && (
+                      <div className="text-center text-gray-500 text-sm py-4">
+                        +{vulnerabilities.length - 3} more vulnerabilities...
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div className="p-4 rounded-lg border border-gray-800 bg-gray-900/50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Shield className="w-5 h-5 text-blue-400" />
+                      <h4 className="font-semibold text-white">Security Recommendations</h4>
+                    </div>
+                    <p className="text-sm text-gray-400 line-clamp-3">
+                      Detailed remediation steps and best practices to fix identified vulnerabilities...
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg border border-gray-800 bg-gray-900/50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="w-5 h-5 text-green-400" />
+                      <h4 className="font-semibold text-white">Compliance Status</h4>
+                    </div>
+                    <p className="text-sm text-gray-400 line-clamp-3">
+                      View compliance status against industry standards and frameworks...
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {isAuthenticated && (
+            <>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <h3 className="text-lg font-semibold text-white">Vulnerabilities Found</h3>
+                {onSaveSuccess && (
+                  <button
+                    onClick={async () => {
+                      setSaveError(null);
+                      setSaving(true);
+                      try {
+                        const saved = await saveTrialScan();
+                        if (saved) {
+                          onSaveSuccess(saved.scanId, saved.scanType);
+                          onClose();
+                        } else {
+                          setSaveError('Failed to save scan.');
+                        }
+                      } catch {
+                        setSaveError('Failed to save scan.');
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                    disabled={saving}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                    {saving ? 'Saving...' : 'Save to Dashboard'}
+                  </button>
+                )}
+              </div>
+              {saveError && (
+                <p className="text-sm text-red-400 mb-4">{saveError}</p>
+              )}
               <div className="space-y-4">
-                {vulnerabilities.slice(0, 3).map((vuln, idx) => (
+                {vulnerabilities.map((vuln, idx) => (
                   <div
                     key={idx}
                     className="p-4 rounded-lg border border-gray-800 bg-gray-900/50"
@@ -132,46 +237,45 @@ export default function TrialScanResults({
                       </div>
                       <SeverityBadge severity={vuln.severity} />
                     </div>
-                    <p className="text-sm text-gray-400 mb-2 line-clamp-2">
+                    <p className="text-sm text-gray-400 mb-2">
                       {vuln.description}
                     </p>
+                    {vuln.recommendation && (
+                      <p className="text-sm text-gray-300 mt-2">
+                        <span className="font-medium">Recommendation:</span> {vuln.recommendation}
+                      </p>
+                    )}
                     {vuln.cvss_score && (
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-500 mt-2">
                         CVSS Score: {vuln.cvss_score}
                       </div>
                     )}
                   </div>
                 ))}
-                {vulnerabilities.length > 3 && (
-                  <div className="text-center text-gray-500 text-sm py-4">
-                    +{vulnerabilities.length - 3} more vulnerabilities...
-                  </div>
-                )}
               </div>
-            </div>
 
-            {/* Additional Preview Sections */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="p-4 rounded-lg border border-gray-800 bg-gray-900/50">
-                <div className="flex items-center gap-2 mb-2">
-                  <Shield className="w-5 h-5 text-blue-400" />
-                  <h4 className="font-semibold text-white">Security Recommendations</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <div className="p-4 rounded-lg border border-gray-800 bg-gray-900/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Shield className="w-5 h-5 text-blue-400" />
+                    <h4 className="font-semibold text-white">Security Recommendations</h4>
+                  </div>
+                  <p className="text-sm text-gray-400">
+                    Review and address each finding above. Apply fixes and re-scan to verify remediation.
+                  </p>
                 </div>
-                <p className="text-sm text-gray-400 line-clamp-3">
-                  Detailed remediation steps and best practices to fix identified vulnerabilities...
-                </p>
-              </div>
-              <div className="p-4 rounded-lg border border-gray-800 bg-gray-900/50">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle className="w-5 h-5 text-green-400" />
-                  <h4 className="font-semibold text-white">Compliance Status</h4>
+                <div className="p-4 rounded-lg border border-gray-800 bg-gray-900/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                    <h4 className="font-semibold text-white">Compliance Status</h4>
+                  </div>
+                  <p className="text-sm text-gray-400">
+                    Use these results to assess compliance against OWASP, CWE, and other frameworks.
+                  </p>
                 </div>
-                <p className="text-sm text-gray-400 line-clamp-3">
-                  View compliance status against industry standards and frameworks...
-                </p>
               </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </div>
     </div>

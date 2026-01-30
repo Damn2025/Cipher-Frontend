@@ -50,12 +50,16 @@ export default function LandingPage() {
   const handleCloseLogin = () => setIsLoginOpen(false);
   const handleCloseSignup = () => setIsSignupOpen(false);
 
-  const handleAuthed = () => {
+  const handleAuthed = (savedScan?: { scanId: string; scanType: 'web' | 'mobile' }) => {
     setIsLoginOpen(false);
     setIsSignupOpen(false);
     setIsTrialScanOpen(false);
     setTrialScanResults(null);
-    navigate("/dashboard");
+    if (savedScan) {
+      navigate(savedScan.scanType === 'web' ? `/scans/${savedScan.scanId}` : `/mobile-scans/${savedScan.scanId}`, { replace: true });
+    } else {
+      navigate("/dashboard", { replace: true });
+    }
   };
 
   const handleTrialScanComplete = (scanType: 'web' | 'mobile', data: any) => {
@@ -119,6 +123,11 @@ export default function LandingPage() {
           onClose={() => setTrialScanResults(null)}
           onOpenLogin={handleOpenLogin}
           onOpenSignup={handleOpenSignup}
+          isAuthenticated={!!user}
+          onSaveSuccess={(scanId, scanType) => {
+            setTrialScanResults(null);
+            navigate(scanType === 'web' ? `/scans/${scanId}` : `/mobile-scans/${scanId}`, { replace: true });
+          }}
         />
       )}
 
