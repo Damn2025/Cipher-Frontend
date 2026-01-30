@@ -172,7 +172,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {scans.map((scan) => (
+                {(Array.isArray(scans) ? scans : []).map((scan) => (
                   <ScanCard key={scan.id} scan={scan} />
                 ))}
               </div>
@@ -204,7 +204,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {mobileScans.map((scan) => (
+                {(Array.isArray(mobileScans) ? mobileScans : []).map((scan) => (
                   <MobileScanCard key={scan.id} scan={scan} />
                 ))}
               </div>

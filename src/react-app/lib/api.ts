@@ -19,10 +19,19 @@ import type {
  * Helper to get the API base URL.
  * In development (Vite), it's relative or can be set via VITE_API_URL.
  * In production/deployment, it should be set via VITE_API_URL environment variable.
+ * Must be a full URL (e.g. https://www.cybersec-back.evokeai.info) so the browser
+ * does not treat it as a path under the frontend origin.
  */
 export function getApiUrl(path: string): string {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  const baseUrl = import.meta.env.VITE_API_URL || '';
+  let baseUrl = (import.meta.env.VITE_API_URL as string) || '';
+  baseUrl = baseUrl.trim();
+  if (!baseUrl) {
+    return cleanPath;
+  }
+  if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+    baseUrl = `https://${baseUrl}`;
+  }
   const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
   return `${cleanBaseUrl}${cleanPath}`;
 }

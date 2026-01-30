@@ -9,7 +9,7 @@ export function useMobileScans() {
   const fetchScans = async () => {
     try {
       const data = await getMobileScans();
-      setScans(data);
+      setScans(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch mobile scans:', error);
     } finally {
@@ -45,7 +45,7 @@ export function useMobileScan(id: string | undefined) {
         ]);
 
         setScan(scanData);
-        setVulnerabilities(vulnData);
+        setVulnerabilities(Array.isArray(vulnData) ? vulnData : []);
       } catch (error) {
         console.error('Failed to fetch mobile scan:', error);
       } finally {

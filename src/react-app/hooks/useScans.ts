@@ -11,7 +11,7 @@ export function useScans() {
     try {
       // Don't set loading to true on subsequent fetches to avoid flickering
       const data = await getScans();
-      setScans(data);
+      setScans(Array.isArray(data) ? data : []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch scans');
@@ -54,7 +54,7 @@ export function useScan(id: string | undefined) {
       ]);
 
       setScan(scanData);
-      setVulnerabilities(vulnData);
+      setVulnerabilities(Array.isArray(vulnData) ? vulnData : []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch scan');
