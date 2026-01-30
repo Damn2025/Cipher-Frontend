@@ -49,7 +49,7 @@ async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   try {
-    const headers = await getAuthHeaders(options.headers?.['Content-Type'] as string || 'application/json');
+    const headers = await getAuthHeaders('application/json');
     
     const response = await fetch(getApiUrl(endpoint), {
       ...options,
